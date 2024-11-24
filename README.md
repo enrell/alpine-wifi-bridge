@@ -21,7 +21,7 @@ This script is designed for personal use and may require adjustments for specifi
 
 ### **1. Clone the Repository**
 ```bash
-sudo apk update && sudo apk add git
+apk update && apk add git
 git clone https://github.com/enrell/alpine-wifi-bridge.git
 cd alpine-wifi-bridge
 ```
@@ -36,7 +36,7 @@ chmod +x script.sh
 ### **1. Run the Script**
 Run the script as root or with `sudo` to ensure it has the required permissions:
 ```bash
-sudo ./script.sh
+./script.sh
 ```
 
 ### **2. Provide Wi-Fi Credentials**
