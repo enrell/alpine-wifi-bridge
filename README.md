@@ -19,13 +19,13 @@ This script is designed for personal use and may require adjustments for specifi
 ## **Prerequisites**
 - Alpine Linux.
 - Internet access on the Wi-Fi network to share.
-- 
 ---
 
 ## **Setup**
 
 ### **1. Clone the Repository**
 ```bash
+sudo apk update && sudo apk add git
 git clone https://github.com/enrell/alpine-wifi-bridge.git
 cd alpine-wifi-bridge
 ```
