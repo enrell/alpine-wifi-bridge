@@ -121,7 +121,7 @@ You can modify the following settings directly in the script:
 
 ## **Contributing**
 
-Feel free to submit issues or pull requests to improve the script!
+Feel free to submit issues or pull requests!
 
 ---
 
