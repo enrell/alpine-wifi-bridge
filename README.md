@@ -20,6 +20,16 @@ This script is designed for personal use and may require adjustments for specifi
 ## **Setup**
 
 ### **1. Clone the Repository**
+Check System Date and Time
+SSL certificates are sensitive to the system date and time. If the date or time zone is incorrect, certificate validation may fail.
+````
+date
+````
+If the time is wrong, fix it
+````
+date -s "YYYY-MM-DD HH:MM:SS"
+````
+
 ```bash
 apk update && apk add git
 git clone https://github.com/enrell/alpine-wifi-bridge.git
