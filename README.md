@@ -6,19 +6,15 @@ This script automates the setup of a Linux device (using Alpine Linux) to connec
 
 This script is designed for personal use and may require adjustments for specific system configurations. Use at your own risk.
 
----
-
 ## **Features**
 - Connects the system to a Wi-Fi network using `wpa_supplicant`.
 - Configures a static IP on the Ethernet interface.
 - Enables IP forwarding to allow internet sharing.
 - Sets up NAT using `iptables` to route traffic from Ethernet to Wi-Fi.
 
----
-
 ## **Prerequisites**
 - Alpine Linux.
-- Internet access on the Wi-Fi network to share.
+- Internet access.
 ---
 
 ## **Setup**
@@ -34,8 +30,6 @@ cd alpine-wifi-bridge
 ```bash
 chmod +x script.sh
 ```
-
----
 
 ## **Usage**
 
@@ -56,9 +50,7 @@ The script will:
 - Set up a static IP on the Ethernet interface (`10.42.0.1` by default).
 - Enable NAT and IP forwarding.
 
----
-
-## **Troubleshooting**
+# **Troubleshooting**
 
 1. **Wi-Fi Not Connecting**
    - Ensure the Wi-Fi SSID and password are correct.
@@ -83,6 +75,18 @@ The script will:
      ```bash
      sysctl net.ipv4.ip_forward
      ```
+## Optional Configuration: Prevent Changes via DHCP
+
+If the DHCP client (udhcpc) ​​is changing the route, you can configure it not to overwrite the default route. Edit or create a specific configuration file for udhcpc, such as /etc/udhcpc/udhcpc.conf, and include:
+````
+nospoof
+````
+
+## Revert the settings to their original state
+By running the script with the --restore flag, you can revert the settings to their original state.
+````
+sudo ./script.sh --restore
+````
 
 ---
 
