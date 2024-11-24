@@ -4,7 +4,9 @@ This script automates the setup of a Linux device (using Alpine Linux) to connec
 
 ## **Disclaimer**
 
-This script is designed for personal use and may require adjustments for specific system configurations. Use at your own risk.
+- This script is designed for my personal use and may require adjustments for specific system configurations. Use at your own risk.
+- The goal of the scripts is to automate sharing the internet from a notebook running Alpine Linux, completely loaded into RAM (no disk), to a computer via wired connection.
+- Here’s my use case: the router is in the living room and my PC is in the bedroom. The router is modern enough to provide the full speed of my internet plan even over Wi-Fi, with almost zero latency and fluctuation. I didn’t want to run a cable from the living room to the bedroom because it would be too much work. So I thought, "Why not load a minimal system (Alpine Linux) onto a laptop that I no longer use via PXE and share the Wi-Fi connection with the PC?" And that’s exactly what I did. Don't judge me, my old notebook consumes less energy than my router.
 
 ## **Features**
 - Connects the system to a Wi-Fi network using `wpa_supplicant`.
