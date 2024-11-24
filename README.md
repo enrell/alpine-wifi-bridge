@@ -85,14 +85,25 @@ The script will:
      ```bash
      sysctl net.ipv4.ip_forward
      ```
-## Optional Configuration: Prevent Changes via DHCP
+# Network monitor
+The network_monitor.py script is designed to automatically monitor your network connection and quickly restart the network interface if the connection drops. It aims to minimize interruptions, with a particular focus on activities where low downtime is critical.
 
-If the DHCP client (udhcpc) ​​is changing the route, you can configure it not to overwrite the default route. Edit or create a specific configuration file for udhcpc, such as /etc/udhcpc/udhcpc.conf, and include:
+The script works by:
+   - Monitoring the network to ensure that it remains connected.
+   - Automatically reconnecting to the network if the connection is lost.
+   - Reinforcing connectivity by running necessary commands when the network fails.
+
+## Install python and run:
+Install:
 ````
-nospoof
+apk update && apk add python3~3.12
+````
+Run:
+````
+python network_monitor.py
 ````
 
-## Revert the settings to their original state
+# Revert the settings to their original state
 By running the script with the --restore flag, you can revert the settings to their original state.
 ````
 ./script.sh --restore
