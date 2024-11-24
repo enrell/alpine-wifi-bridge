@@ -85,7 +85,7 @@ nospoof
 ## Revert the settings to their original state
 By running the script with the --restore flag, you can revert the settings to their original state.
 ````
-sudo ./script.sh --restore
+./script.sh --restore
 ````
 
 ---
