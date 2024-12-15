@@ -102,7 +102,7 @@ apk update && apk add python3~3.12
 ````
 Run:
 ````
-python network_monitor.py
+python network_restart.py
 ````
 
 # Revert the settings to their original state
