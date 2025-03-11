@@ -26,6 +26,7 @@ This script automates the setup of a Linux device (using Alpine Linux) to connec
 - **NEW**: Stores configuration in a file for consistent operation after updates
 - **NEW**: Auto-detects gateway IP address or allows custom specification
 - **NEW**: Uses Alpine Linux's native configuration methods (no more /etc/network errors)
+- **NEW**: Modular script structure for easier configuration and maintenance
 
 ## **Prerequisites**
 - Alpine Linux.
@@ -53,13 +54,17 @@ cd alpine-wifi-bridge
 
 ### **2. Make the Script Executable**
 ```bash
-chmod +x script.sh
+chmod +x setup.sh script.sh scripts/*.sh
 ```
 
 ## **Usage**
 
 ### **1. Run the Script**
 Run the script as root or with `sudo` to ensure it has the required permissions:
+```bash
+./setup.sh
+```
+Or use the backward-compatible script:
 ```bash
 ./script.sh
 ```
@@ -86,6 +91,41 @@ The script will:
   - All traffic to and from the notebook
   - ICMP traffic for ping and network diagnostics
 
+## **Modular Structure**
+
+The script has been split into multiple files for easier configuration and maintenance:
+
+### **Configuration**
+- `config/settings.conf`: Main configuration file with all user-configurable settings
+
+### **Scripts**
+- `setup.sh`: Main script that ties everything together
+- `script.sh`: Backward-compatible wrapper for the old script
+- `scripts/utils.sh`: Utility functions used by all scripts
+- `scripts/backup.sh`: Backup and restore functionality
+- `scripts/network.sh`: Network configuration (Wi-Fi, Ethernet, routing)
+- `scripts/firewall.sh`: Firewall and NAT configuration
+
+### **Monitoring**
+- `network-restart.py`: Network monitoring script
+
+## **Customizing Settings**
+
+To customize the script's behavior, edit the `config/settings.conf` file:
+
+```bash
+# Edit the configuration file
+nano config/settings.conf
+```
+
+Available settings:
+- Network interfaces (auto-detected by default)
+- Gateway IP (auto-detected by default)
+- Static IP for Ethernet interface
+- Wi-Fi configuration path
+- Paths for configuration storage
+- Iptables rules storage
+
 ## **Upgrading from Previous Versions**
 
 If you're upgrading from a previous version of this script:
@@ -107,12 +147,12 @@ If you're upgrading from a previous version of this script:
    - Store your network interface names for consistent operation
    - Auto-detect your gateway IP address
    ```bash
-   ./script.sh
+   ./setup.sh
    ```
 
 4. **If Something Goes Wrong**: You can restore your original settings:
    ```bash
-   ./script.sh --restore
+   ./setup.sh --restore
    ```
 
 # **Troubleshooting**
@@ -159,13 +199,13 @@ If you're upgrading from a previous version of this script:
      ```
    - Change the `GATEWAY_IP` value to your router's IP address, then run:
      ```bash
-     ./script.sh
+     ./setup.sh
      ```
 
 5. **Configuration Issues After Update**
    - If you experience issues after updating the script, you can restore your original settings:
      ```bash
-     ./script.sh --restore
+     ./setup.sh --restore
      ```
    - Check the configuration file for any issues:
      ```bash
@@ -202,18 +242,8 @@ python network-restart.py
 # Revert the settings to their original state
 By running the script with the --restore flag, you can revert the settings to their original state.
 ````
-./script.sh --restore
+./setup.sh --restore
 ````
-
----
-
-## **Customization**
-
-You can modify the following settings directly in the script:
-- **Static IP for Ethernet**: Change the `10.42.0.1` address in the script.
-- **Wi-Fi Configuration Path**: Default is `/etc/wpa_supplicant/wpa_supplicant.conf`.
-- **Configuration File**: The script now stores settings in `/etc/alpine-wifi-bridge/config`.
-- **Gateway IP**: The script auto-detects this, but you can edit it in the configuration file.
 
 ---
 

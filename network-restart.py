@@ -14,6 +14,7 @@ RESTART_CMD = "/etc/init.d/networking restart"  # Command to restart the network
 POST_RESTART_DELAY = 2  # Delay after restarting the network (in seconds)
 IPTABLES_CHECK_INTERVAL = 300  # Check iptables rules every 5 minutes
 DEFAULT_GATEWAY = "192.168.0.1"  # Default gateway if not specified in config
+DEFAULT_ETH_SUBNET = "24"  # Default subnet mask for Ethernet interface
 
 # Infinite cycle of DNS servers for rotation
 ping_targets_cycle = cycle(PING_TARGETS)
@@ -23,7 +24,10 @@ def load_config():
     config = {
         "WLAN_IFACE": None,
         "ETH_IFACE": None,
-        "GATEWAY_IP": DEFAULT_GATEWAY
+        "GATEWAY_IP": DEFAULT_GATEWAY,
+        "ETH_STATIC_IP": "10.42.0.1",
+        "ETH_SUBNET": DEFAULT_ETH_SUBNET,
+        "IPTABLES_RULES": "/etc/iptables/rules.v4"
     }
     
     try:
@@ -128,6 +132,7 @@ def check_and_fix_iptables():
     config = load_config()
     wlan_iface = config["WLAN_IFACE"]
     eth_iface = config["ETH_IFACE"]
+    subnet = f"{config['ETH_STATIC_IP'].rsplit('.', 1)[0]}.0/{config['ETH_SUBNET']}"
     
     if not wlan_iface or not eth_iface:
         print(f"{time.strftime('%Y-%m-%d %H:%M:%S')}: Could not find network interfaces. WLAN: {wlan_iface}, ETH: {eth_iface}")
@@ -146,7 +151,7 @@ def check_and_fix_iptables():
             f"iptables -C FORWARD -i {wlan_iface} -o {eth_iface} -j ACCEPT",
             f"iptables -C FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT",
             f"iptables -C FORWARD -i {eth_iface} -j ACCEPT",
-            f"iptables -C FORWARD -s 10.42.0.0/24 -d 10.42.0.0/24 -j ACCEPT",
+            f"iptables -C FORWARD -s {subnet} -d {subnet} -j ACCEPT",
             f"iptables -C FORWARD -p icmp -j ACCEPT"
         ]
         
@@ -156,6 +161,12 @@ def check_and_fix_iptables():
                 # Convert check command to add command
                 add_rule = rule_check.replace("-C ", "-A ")
                 os.system(add_rule)
+        
+        # Save iptables rules if they were modified
+        if config["IPTABLES_RULES"]:
+            print(f"{time.strftime('%Y-%m-%d %H:%M:%S')}: Saving iptables rules...")
+            os.system(f"mkdir -p $(dirname {config['IPTABLES_RULES']})")
+            os.system(f"iptables-save > {config['IPTABLES_RULES']}")
                 
         print(f"{time.strftime('%Y-%m-%d %H:%M:%S')}: iptables rules have been checked and fixed if needed.")
         
