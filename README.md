@@ -21,6 +21,10 @@ This script automates the setup of a Linux device (using Alpine Linux) to connec
   - Checks internet connectivity at regular intervals
   - Restores network connectivity when issues are detected
   - Periodically verifies and reinstates iptables rules if they're missing
+- **NEW**: Safe to run multiple times without breaking existing configurations
+- **NEW**: Automatically backs up network settings before making changes
+- **NEW**: Stores configuration in a file for consistent operation after updates
+- **NEW**: Auto-detects gateway IP address or allows custom specification
 
 ## **Prerequisites**
 - Alpine Linux.
@@ -64,7 +68,13 @@ If the script doesn't find an existing Wi-Fi configuration, it will prompt you t
 - **SSID**: The name of the Wi-Fi network.
 - **Password**: The Wi-Fi password.
 
-### **3. Internet Sharing**
+### **3. Gateway IP Configuration**
+The script will:
+- Automatically detect your gateway IP address from the network configuration
+- If detection fails, it will ask if you want to specify a custom gateway IP
+- You can enter your router's IP address (typically something like 192.168.1.1 or 10.0.0.1)
+
+### **4. Internet Sharing**
 The script will:
 - Connect to the Wi-Fi network.
 - Set up a static IP on the Ethernet interface (`10.42.0.1` by default).
@@ -74,6 +84,35 @@ The script will:
   - All traffic to and from the internet
   - All traffic to and from the notebook
   - ICMP traffic for ping and network diagnostics
+
+## **Upgrading from Previous Versions**
+
+If you're upgrading from a previous version of this script:
+
+1. **Backup Your Configuration**: Although the script now automatically backs up your network configuration, it's always good practice to manually back up important files:
+   ```bash
+   cp /etc/wpa_supplicant/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf.bak
+   ```
+
+2. **Update the Repository**:
+   ```bash
+   cd alpine-wifi-bridge
+   git pull
+   ```
+
+3. **Run the Script**: The updated script is designed to be safe to run multiple times and will:
+   - Detect existing configurations
+   - Only apply changes where needed
+   - Store your network interface names for consistent operation
+   - Auto-detect your gateway IP address
+   ```bash
+   ./script.sh
+   ```
+
+4. **If Something Goes Wrong**: You can restore your original settings:
+   ```bash
+   ./script.sh --restore
+   ```
 
 # **Troubleshooting**
 
@@ -108,6 +147,30 @@ The script will:
      python network-restart.py
      ```
 
+4. **Gateway IP Issues**
+   - If you're having connectivity problems, check your gateway IP:
+     ```bash
+     ip route | grep default
+     ```
+   - If the gateway IP is incorrect, you can edit the configuration file:
+     ```bash
+     nano /etc/alpine-wifi-bridge/config
+     ```
+   - Change the `GATEWAY_IP` value to your router's IP address, then run:
+     ```bash
+     ./script.sh
+     ```
+
+5. **Configuration Issues After Update**
+   - If you experience issues after updating the script, you can restore your original settings:
+     ```bash
+     ./script.sh --restore
+     ```
+   - Check the configuration file for any issues:
+     ```bash
+     cat /etc/alpine-wifi-bridge/config
+     ```
+
 # Network monitor
 The network_restart.py script is designed to automatically monitor your network connection and quickly restart the network interface if the connection drops. It aims to minimize interruptions, with a particular focus on activities where low downtime is critical.
 
@@ -117,6 +180,8 @@ The script works by:
    - Reinforcing connectivity by running necessary commands when the network fails.
    - Periodically checking that all required iptables rules are in place and fixing any missing rules.
    - Ensuring IP forwarding is enabled after any network restarts.
+   - **NEW**: Reading interface names from the configuration file for consistent operation.
+   - **NEW**: Using the correct gateway IP address from the configuration file.
 
 ## Install python and run:
 Install:
@@ -141,6 +206,8 @@ By running the script with the --restore flag, you can revert the settings to th
 You can modify the following settings directly in the script:
 - **Static IP for Ethernet**: Change the `10.42.0.1` address in the script.
 - **Wi-Fi Configuration Path**: Default is `/etc/wpa_supplicant/wpa_supplicant.conf`.
+- **Configuration File**: The script now stores settings in `/etc/alpine-wifi-bridge/config`.
+- **Gateway IP**: The script auto-detects this, but you can edit it in the configuration file.
 
 ---
 
