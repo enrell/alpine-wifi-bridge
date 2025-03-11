@@ -336,20 +336,22 @@ log "Saving iptables rules..."
 if [ -d "/etc/init.d" ] && [ -f "/etc/init.d/iptables" ]; then
     /etc/init.d/iptables save || warn_continue "Failed to save iptables rules using init.d script."
 else
-    # Alternative method to save iptables rules
+    # Alternative method to save iptables rules for Alpine Linux
     mkdir -p /etc/iptables
     iptables-save > /etc/iptables/rules.v4 || warn_continue "Failed to save iptables rules to file."
     
-    # Create a script to restore rules on boot if it doesn't exist
-    if [ ! -f "/etc/network/if-pre-up.d/iptables" ]; then
-        mkdir -p /etc/network/if-pre-up.d
-        cat > /etc/network/if-pre-up.d/iptables << EOF
+    # Create a local.d script to load iptables rules at boot (Alpine Linux approach)
+    mkdir -p /etc/local.d
+    cat > /etc/local.d/iptables.start << EOF
 #!/bin/sh
+# Load iptables rules
 /sbin/iptables-restore < /etc/iptables/rules.v4
 exit 0
 EOF
-        chmod +x /etc/network/if-pre-up.d/iptables || warn_continue "Failed to make iptables restore script executable."
-    fi
+    chmod +x /etc/local.d/iptables.start || warn_continue "Failed to make iptables restore script executable."
+    
+    # Ensure local service is enabled
+    rc-update add local default 2>/dev/null || warn_continue "Failed to enable local service for startup scripts."
 fi
 
 # Save configuration for future runs

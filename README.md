@@ -25,6 +25,7 @@ This script automates the setup of a Linux device (using Alpine Linux) to connec
 - **NEW**: Automatically backs up network settings before making changes
 - **NEW**: Stores configuration in a file for consistent operation after updates
 - **NEW**: Auto-detects gateway IP address or allows custom specification
+- **NEW**: Uses Alpine Linux's native configuration methods (no more /etc/network errors)
 
 ## **Prerequisites**
 - Alpine Linux.
@@ -170,6 +171,11 @@ If you're upgrading from a previous version of this script:
      ```bash
      cat /etc/alpine-wifi-bridge/config
      ```
+
+6. **Errors About Missing Files or Directories**
+   - The script now uses Alpine Linux's native configuration methods
+   - If you see errors about missing files or directories, make sure you're using the latest version of the script
+   - The script creates all necessary directories automatically
 
 # Network monitor
 The network_restart.py script is designed to automatically monitor your network connection and quickly restart the network interface if the connection drops. It aims to minimize interruptions, with a particular focus on activities where low downtime is critical.
