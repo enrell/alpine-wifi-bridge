@@ -31,9 +31,21 @@ restore_settings() {
 
     # Remove NAT iptables rules
     log "Removing iptables NAT rules..."
+    # Basic NAT rules
     iptables -t nat -D POSTROUTING -o "$WLAN_IFACE" -j MASQUERADE 2>/dev/null || warn_continue "Failed to remove NAT POSTROUTING rule."
     iptables -D FORWARD -i "$ETH_IFACE" -o "$WLAN_IFACE" -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || warn_continue "Failed to remove FORWARD rule (inbound)."
     iptables -D FORWARD -i "$WLAN_IFACE" -o "$ETH_IFACE" -j ACCEPT 2>/dev/null || warn_continue "Failed to remove FORWARD rule (outbound)."
+    
+    # Enhanced rules
+    log "Removing enhanced iptables rules..."
+    iptables -D FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || warn_continue "Failed to remove established connections rule."
+    iptables -D FORWARD -i "$ETH_IFACE" -j ACCEPT 2>/dev/null || warn_continue "Failed to remove outgoing connections rule."
+    iptables -D FORWARD -s 10.42.0.0/24 -d 10.42.0.0/24 -j ACCEPT 2>/dev/null || warn_continue "Failed to remove local network traffic rule."
+    iptables -D INPUT -i "$ETH_IFACE" -j ACCEPT 2>/dev/null || warn_continue "Failed to remove notebook input rule."
+    iptables -D OUTPUT -o "$WLAN_IFACE" -j ACCEPT 2>/dev/null || warn_continue "Failed to remove notebook output rule."
+    iptables -D INPUT -p icmp -j ACCEPT 2>/dev/null || warn_continue "Failed to remove ICMP input rule."
+    iptables -D OUTPUT -p icmp -j ACCEPT 2>/dev/null || warn_continue "Failed to remove ICMP output rule."
+    iptables -D FORWARD -p icmp -j ACCEPT 2>/dev/null || warn_continue "Failed to remove ICMP forwarding rule."
 
     # Remove static IP from the Ethernet interface
     if ip addr show "$ETH_IFACE" | grep -q "10.42.0.1"; then
@@ -133,12 +145,45 @@ fi
 # Configure NAT with iptables
 if [ -n "$ETH_IFACE" ]; then
     log "Setting up NAT with iptables..."
+    # Basic NAT configuration
     iptables -t nat -C POSTROUTING -o "$WLAN_IFACE" -j MASQUERADE 2>/dev/null || \
         iptables -t nat -A POSTROUTING -o "$WLAN_IFACE" -j MASQUERADE || warn_continue "Failed to set up NAT."
     iptables -C FORWARD -i "$ETH_IFACE" -o "$WLAN_IFACE" -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
         iptables -A FORWARD -i "$ETH_IFACE" -o "$WLAN_IFACE" -m state --state RELATED,ESTABLISHED -j ACCEPT || warn_continue "Failed to allow forwarding from $ETH_IFACE to $WLAN_IFACE."
     iptables -C FORWARD -i "$WLAN_IFACE" -o "$ETH_IFACE" -j ACCEPT 2>/dev/null || \
         iptables -A FORWARD -i "$WLAN_IFACE" -o "$ETH_IFACE" -j ACCEPT || warn_continue "Failed to allow forwarding from $WLAN_IFACE to $ETH_IFACE."
+    
+    # Enhanced rules to allow all traffic to pass freely
+    log "Setting up enhanced rules for unrestricted network communication..."
+    
+    # Allow all established connections
+    iptables -C FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || \
+        iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT || warn_continue "Failed to allow established connections."
+    
+    # Allow all outgoing connections
+    iptables -C FORWARD -i "$ETH_IFACE" -j ACCEPT 2>/dev/null || \
+        iptables -A FORWARD -i "$ETH_IFACE" -j ACCEPT || warn_continue "Failed to allow all outgoing connections from $ETH_IFACE."
+    
+    # Allow all traffic between devices in the local network
+    iptables -C FORWARD -s 10.42.0.0/24 -d 10.42.0.0/24 -j ACCEPT 2>/dev/null || \
+        iptables -A FORWARD -s 10.42.0.0/24 -d 10.42.0.0/24 -j ACCEPT || warn_continue "Failed to allow traffic between local devices."
+    
+    # Allow all traffic to the notebook (bridging device)
+    iptables -C INPUT -i "$ETH_IFACE" -j ACCEPT 2>/dev/null || \
+        iptables -A INPUT -i "$ETH_IFACE" -j ACCEPT || warn_continue "Failed to allow traffic to the notebook from $ETH_IFACE."
+    
+    # Allow traffic from the notebook to any destination
+    iptables -C OUTPUT -o "$WLAN_IFACE" -j ACCEPT 2>/dev/null || \
+        iptables -A OUTPUT -o "$WLAN_IFACE" -j ACCEPT || warn_continue "Failed to allow traffic from notebook to any destination via $WLAN_IFACE."
+    
+    # Allow ICMP (ping) traffic in all directions
+    iptables -C INPUT -p icmp -j ACCEPT 2>/dev/null || \
+        iptables -A INPUT -p icmp -j ACCEPT || warn_continue "Failed to allow ICMP input."
+    iptables -C OUTPUT -p icmp -j ACCEPT 2>/dev/null || \
+        iptables -A OUTPUT -p icmp -j ACCEPT || warn_continue "Failed to allow ICMP output."
+    iptables -C FORWARD -p icmp -j ACCEPT 2>/dev/null || \
+        iptables -A FORWARD -p icmp -j ACCEPT || warn_continue "Failed to allow ICMP forwarding."
+
 else
     log "Skipping NAT configuration as no Ethernet interface is available."
 fi
