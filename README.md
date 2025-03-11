@@ -27,6 +27,7 @@ This script automates the setup of a Linux device (using Alpine Linux) to connec
 - **NEW**: Auto-detects gateway IP address or allows custom specification
 - **NEW**: Uses Alpine Linux's native configuration methods (no more /etc/network errors)
 - **NEW**: Modular script structure for easier configuration and maintenance
+- **NEW**: Port forwarding support to make services on your PC accessible from the internet
 
 ## **Prerequisites**
 - Alpine Linux.
@@ -91,6 +92,46 @@ The script will:
   - All traffic to and from the notebook
   - ICMP traffic for ping and network diagnostics
 
+## **Port Forwarding Feature**
+
+The script now includes the ability to forward all traffic from your Alpine machine to your PC. This is useful when you want to run services on your PC and make them accessible from the outside network.
+
+### **How to Enable Port Forwarding**
+
+1. Edit the configuration file:
+   ```bash
+   nano config/settings.conf
+   ```
+
+2. Change the following settings:
+   ```
+   # Port forwarding configuration
+   # Set to "true" to enable forwarding all traffic from Alpine to PC
+   ENABLE_PORT_FORWARDING="true"
+   
+   # IP address of the PC to forward traffic to
+   # Example: PC_IP="10.42.0.100"
+   PC_IP="10.42.0.100"  # Replace with your PC's actual IP address
+   ```
+
+3. Run the setup script:
+   ```bash
+   ./setup.sh
+   ```
+
+### **How It Works**
+
+- All traffic sent to your Alpine machine's Wi-Fi IP address will be redirected to your PC
+- This makes services running on your PC (e.g., web servers, game servers) accessible from the outside network
+- You'll access these services using the Alpine machine's IP address (the one on the Wi-Fi network)
+
+### **Example Use Case**
+
+If your Alpine machine has IP 192.168.0.170 on the Wi-Fi network and your PC has IP 10.42.0.100 on the Ethernet network:
+
+1. You run a web server on your PC at 10.42.0.100:8000
+2. With port forwarding enabled, you can access this web server from any device on your Wi-Fi network by navigating to 192.168.0.170:8000
+
 ## **Modular Structure**
 
 The script has been split into multiple files for easier configuration and maintenance:
@@ -105,6 +146,7 @@ The script has been split into multiple files for easier configuration and maint
 - `scripts/backup.sh`: Backup and restore functionality
 - `scripts/network.sh`: Network configuration (Wi-Fi, Ethernet, routing)
 - `scripts/firewall.sh`: Firewall and NAT configuration
+- `scripts/portforward.sh`: Port forwarding functionality
 
 ### **Monitoring**
 - `network-restart.py`: Network monitoring script
@@ -125,6 +167,7 @@ Available settings:
 - Wi-Fi configuration path
 - Paths for configuration storage
 - Iptables rules storage
+- Port forwarding configuration
 
 ## **Upgrading from Previous Versions**
 
@@ -202,7 +245,18 @@ If you're upgrading from a previous version of this script:
      ./setup.sh
      ```
 
-5. **Configuration Issues After Update**
+5. **Port Forwarding Not Working**
+   - Check that port forwarding is enabled in the configuration
+   - Verify that your PC's IP is correct in the configuration
+   - Check the iptables rules:
+     ```bash
+     iptables -t nat -L PREROUTING -v -n
+     iptables -L FORWARD -v -n
+     ```
+   - Make sure your PC's firewall allows incoming connections
+   - Verify the service is running on your PC and listening on the correct interfaces
+
+6. **Configuration Issues After Update**
    - If you experience issues after updating the script, you can restore your original settings:
      ```bash
      ./setup.sh --restore
@@ -212,7 +266,7 @@ If you're upgrading from a previous version of this script:
      cat /etc/alpine-wifi-bridge/config
      ```
 
-6. **Errors About Missing Files or Directories**
+7. **Errors About Missing Files or Directories**
    - The script now uses Alpine Linux's native configuration methods
    - If you see errors about missing files or directories, make sure you're using the latest version of the script
    - The script creates all necessary directories automatically

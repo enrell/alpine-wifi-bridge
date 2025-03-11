@@ -6,6 +6,7 @@
 . ./scripts/backup.sh
 . ./scripts/network.sh
 . ./scripts/firewall.sh
+. ./scripts/portforward.sh
 
 # Configuration file path
 CONFIG_PATH="./config/settings.conf"
@@ -56,6 +57,9 @@ setup() {
     # Setup firewall and NAT
     setup_firewall
     
+    # Setup port forwarding if enabled
+    setup_port_forwarding
+    
     # Save firewall rules
     save_firewall_rules
     
@@ -71,6 +75,9 @@ setup() {
     fi
     
     log "Configuration complete! If both interfaces are active, internet sharing should now be working."
+    if [ "$ENABLE_PORT_FORWARDING" = "true" ]; then
+        log "Port forwarding is enabled. Traffic to Alpine's WLAN IP will be redirected to $PC_IP."
+    fi
     log "To restore settings, run: $0 --restore"
 }
 
@@ -86,6 +93,11 @@ restore() {
         load_config "$RUNTIME_CONFIG"
     else
         load_config "$CONFIG_PATH"
+    fi
+    
+    # Remove port forwarding rules if enabled
+    if [ "$ENABLE_PORT_FORWARDING" = "true" ]; then
+        remove_port_forwarding
     fi
     
     # Restore settings
