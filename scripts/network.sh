@@ -21,8 +21,38 @@ setup_wifi() {
         # Create wpa_supplicant directory if it doesn't exist
         mkdir -p "$(dirname "$WPA_CONF")" || error_exit "Failed to create wpa_supplicant directory."
         
-        wpa_passphrase "$SSID" "$PASSWORD" > "$WPA_CONF" || error_exit "Failed to generate wpa_supplicant configuration."
-        log "Wi-Fi configuration saved to $WPA_CONF."
+        # Handle special characters in passwords by using a temporary file
+        log "Generating wpa_supplicant configuration..."
+        
+        # Create a temporary file for the password to avoid shell interpretation issues
+        TEMP_FILE=$(mktemp)
+        echo -n "$PASSWORD" > "$TEMP_FILE"
+        
+        # Use wpa_passphrase with the password file
+        wpa_passphrase "$SSID" "$(cat "$TEMP_FILE")" > "$WPA_CONF" 2>/dev/null
+        
+        # Secure delete the temporary file
+        rm -f "$TEMP_FILE"
+        
+        # Check if the configuration was created successfully
+        if [ ! -s "$WPA_CONF" ]; then
+            log "Failed to generate configuration with wpa_passphrase. Creating manual configuration..."
+            
+            # Create a basic configuration manually
+            cat > "$WPA_CONF" << EOF
+ctrl_interface=/var/run/wpa_supplicant
+update_config=1
+
+network={
+    ssid="$SSID"
+    psk="$PASSWORD"
+    key_mgmt=WPA-PSK
+}
+EOF
+            log "Manual Wi-Fi configuration created."
+        else
+            log "Wi-Fi configuration saved to $WPA_CONF."
+        fi
     else
         log "Using existing Wi-Fi configuration at $WPA_CONF."
     fi
@@ -38,9 +68,17 @@ setup_wifi() {
     # Check if interface already has an IP address
     if ! ip addr show "$WLAN_IFACE" | grep -q "inet "; then
         log "Requesting IP for $WLAN_IFACE via DHCP..."
-        udhcpc -i "$WLAN_IFACE" || error_exit "Failed to obtain an IP address for $WLAN_IFACE."
+        udhcpc -i "$WLAN_IFACE" -t 10 -T 2 || error_exit "Failed to obtain an IP address for $WLAN_IFACE."
     else
         log "$WLAN_IFACE already has an IP address. Skipping DHCP request."
+    fi
+    
+    # Verify connectivity
+    log "Verifying network connectivity..."
+    if ping -c 1 -W 5 8.8.8.8 >/dev/null 2>&1; then
+        log "Network connectivity confirmed."
+    else
+        warn_continue "Could not verify internet connectivity. The Wi-Fi connection may not be working properly."
     fi
 }
 
@@ -102,5 +140,32 @@ setup_routing() {
 install_packages() {
     log "Installing required packages..."
     apk update || error_exit "Failed to update package lists."
-    apk add --no-cache iptables wireless-tools wpa_supplicant || error_exit "Failed to install required packages."
+    
+    # Check Alpine version to determine package requirements
+    ALPINE_VERSION=$(cat /etc/alpine-release 2>/dev/null || echo "unknown")
+    log "Detected Alpine Linux version: $ALPINE_VERSION"
+    
+    # Install base packages
+    log "Installing base networking packages..."
+    apk add --no-cache wireless-tools wpa_supplicant || error_exit "Failed to install wireless packages."
+    
+    # Check if we need iptables or iptables-nft (for nftables compatibility)
+    if command -v nft >/dev/null 2>&1; then
+        log "nftables detected, installing iptables-nft for compatibility..."
+        apk add --no-cache iptables-nft || {
+            log "Failed to install iptables-nft, falling back to standard iptables..."
+            apk add --no-cache iptables || error_exit "Failed to install iptables packages."
+        }
+    else
+        log "Installing standard iptables..."
+        apk add --no-cache iptables || error_exit "Failed to install iptables packages."
+    fi
+    
+    # Create required directories if they don't exist
+    for dir in "/etc/wpa_supplicant" "/etc/iptables" "/etc/local.d"; do
+        if [ ! -d "$dir" ]; then
+            log "Creating directory: $dir"
+            mkdir -p "$dir" || warn_continue "Failed to create directory: $dir"
+        fi
+    done
 } 
