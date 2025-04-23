@@ -198,6 +198,8 @@ If you're upgrading from a previous version of this script:
    ./setup.sh --restore
    ```
 
+5. **Check the Changelog**: For a detailed list of changes in each version, see [Changelog](CHANGELOG.md)
+
 # **Troubleshooting**
 
 1. **Wi-Fi Not Connecting**
@@ -273,6 +275,7 @@ If you're upgrading from a previous version of this script:
 
 8. **Incompatible Configurations**
    - For a detailed list of configurations that may not work with this script and their solutions, see [Incompatible Configurations](docs/INCOMPATIBLE_CONFIGURATIONS.md)
+   - For information about fixed incompatible configurations, see [Fixed Configurations](docs/FIXED_CONFIGURATIONS.md)
 
 # Network monitor
 The network_restart.py script is designed to automatically monitor your network connection and quickly restart the network interface if the connection drops. It aims to minimize interruptions, with a particular focus on activities where low downtime is critical.
