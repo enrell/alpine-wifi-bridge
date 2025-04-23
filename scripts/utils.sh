@@ -63,7 +63,21 @@ detect_interfaces() {
     # Detect WLAN interface if not specified
     if [ -z "$WLAN_IFACE" ]; then
         log "Detecting Wi-Fi interface..."
+        # First try traditional naming (wlan0)
         WLAN_IFACE=$(ip link | grep -E "^[0-9]+: wlan" | awk -F': ' '{print $2}' | head -n 1)
+        
+        # If not found, try to detect by wireless capability
+        if [ -z "$WLAN_IFACE" ]; then
+            for iface in $(ls /sys/class/net); do
+                if [ -d "/sys/class/net/$iface/wireless" ] || [ -d "/sys/class/net/$iface/phy80211" ]; then
+                    WLAN_IFACE="$iface"
+                    log "Found wireless interface using capability detection: $WLAN_IFACE"
+                    break
+                fi
+            done
+        fi
+        
+        # If still not found, error out
         if [ -z "$WLAN_IFACE" ]; then
             error_exit "No Wi-Fi interface found. Ensure your device has a Wi-Fi adapter."
         fi
@@ -73,7 +87,23 @@ detect_interfaces() {
     # Detect Ethernet interface if not specified
     if [ -z "$ETH_IFACE" ]; then
         log "Detecting Ethernet interface..."
+        # First try traditional naming (eth0)
         ETH_IFACE=$(ip link | grep -E "^[0-9]+: eth" | awk -F': ' '{print $2}' | head -n 1)
+        
+        # If not found, try to detect by type and exclude the wireless interface
+        if [ -z "$ETH_IFACE" ]; then
+            for iface in $(ls /sys/class/net); do
+                # Skip loopback and wireless interfaces
+                if [ "$iface" != "lo" ] && [ "$iface" != "$WLAN_IFACE" ] && \
+                   [ ! -d "/sys/class/net/$iface/wireless" ] && [ ! -d "/sys/class/net/$iface/phy80211" ] && \
+                   [ -d "/sys/class/net/$iface/device" ]; then
+                    ETH_IFACE="$iface"
+                    log "Found Ethernet interface using capability detection: $ETH_IFACE"
+                    break
+                fi
+            done
+        fi
+        
         if [ -z "$ETH_IFACE" ]; then
             warn_continue "No Ethernet interface found. Skipping Ethernet configuration."
         else

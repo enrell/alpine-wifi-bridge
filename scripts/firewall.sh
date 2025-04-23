@@ -4,6 +4,18 @@
 # Source utility functions
 . ./scripts/utils.sh
 
+# Detect firewall system and set up appropriate commands
+detect_firewall_system() {
+    # Check if nftables is the primary firewall system
+    if command -v nft >/dev/null 2>&1 && [ ! -e "/proc/net/ip_tables_names" ]; then
+        log "Detected nftables as primary firewall system."
+        FIREWALL_TYPE="nftables"
+    else
+        log "Using iptables for firewall configuration."
+        FIREWALL_TYPE="iptables"
+    fi
+}
+
 # Configure NAT and firewall rules
 setup_firewall() {
     if [ -z "$ETH_IFACE" ]; then
@@ -11,6 +23,102 @@ setup_firewall() {
         return
     fi
     
+    # Detect which firewall system to use
+    detect_firewall_system
+    
+    if [ "$FIREWALL_TYPE" = "nftables" ]; then
+        setup_nftables_firewall
+    else
+        setup_iptables_firewall
+    fi
+}
+
+# Configure NAT and firewall using nftables
+setup_nftables_firewall() {
+    log "Setting up NAT with nftables..."
+    
+    # Check if nft is available
+    if ! command -v nft >/dev/null 2>&1; then
+        log "nft command not found. Falling back to iptables..."
+        setup_iptables_firewall
+        return
+    fi
+    
+    # Create a basic nftables configuration file
+    local nft_file="/etc/nftables/alpine-wifi-bridge.nft"
+    mkdir -p "$(dirname "$nft_file")" || warn_continue "Failed to create nftables directory."
+    
+    local subnet="${ETH_STATIC_IP%.*}.0/${ETH_SUBNET}"
+    
+    cat > "$nft_file" << EOF
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table ip nat {
+    chain prerouting {
+        type nat hook prerouting priority -100; policy accept;
+    }
+    
+    chain postrouting {
+        type nat hook postrouting priority 100; policy accept;
+        oifname "$WLAN_IFACE" masquerade
+    }
+}
+
+table ip filter {
+    chain input {
+        type filter hook input priority 0; policy accept;
+        iifname "$ETH_IFACE" accept
+        icmp type echo-request accept
+    }
+    
+    chain forward {
+        type filter hook forward priority 0; policy accept;
+        iifname "$ETH_IFACE" oifname "$WLAN_IFACE" ct state related,established accept
+        iifname "$WLAN_IFACE" oifname "$ETH_IFACE" accept
+        ct state related,established accept
+        iifname "$ETH_IFACE" accept
+        ip saddr $subnet ip daddr $subnet accept
+        icmp type echo-request accept
+    }
+    
+    chain output {
+        type filter hook output priority 0; policy accept;
+        oifname "$WLAN_IFACE" accept
+        icmp type echo-request accept
+    }
+}
+EOF
+    
+    # Apply the nftables rules
+    log "Applying nftables rules..."
+    nft -f "$nft_file" || {
+        warn_continue "Failed to apply nftables rules. Falling back to iptables..."
+        setup_iptables_firewall
+    }
+    
+    # Make sure nftables service is enabled
+    if [ -f "/etc/init.d/nftables" ]; then
+        rc-update add nftables default 2>/dev/null || warn_continue "Failed to enable nftables service."
+    fi
+    
+    # Create a script to load nftables rules at boot
+    local nft_script="/etc/local.d/nftables.start"
+    mkdir -p "$(dirname "$nft_script")" || warn_continue "Failed to create local.d directory."
+    
+    cat > "$nft_script" << EOF
+#!/bin/sh
+# Load nftables rules
+/usr/sbin/nft -f $nft_file
+exit 0
+EOF
+    
+    chmod +x "$nft_script" || warn_continue "Failed to make nftables script executable."
+}
+
+# Configure NAT and firewall using iptables
+setup_iptables_firewall() {
     log "Setting up NAT with iptables..."
     
     # Basic NAT configuration - check before adding
@@ -58,8 +166,14 @@ setup_firewall() {
         iptables -A FORWARD -p icmp -j ACCEPT || warn_continue "Failed to allow ICMP forwarding."
 }
 
-# Save iptables rules
+# Save firewall rules
 save_firewall_rules() {
+    # If we're using nftables, rules are already saved in the setup_nftables_firewall function
+    if [ "$FIREWALL_TYPE" = "nftables" ]; then
+        log "nftables rules already saved during setup."
+        return
+    fi
+    
     log "Saving iptables rules..."
     
     if [ -d "/etc/init.d" ] && [ -f "/etc/init.d/iptables" ]; then
