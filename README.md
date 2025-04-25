@@ -1,11 +1,13 @@
-# **Wi-Fi to Ethernet Sharing Script**
+# **Wi-Fi to Ethernet Sharing - Python Implementation**
 
-This script automates the setup of a Linux device (using Alpine Linux) to connect to a Wi-Fi network and share the internet connection through an Ethernet interface. It handles network configuration, IP forwarding and NAT setup.
+This project automates the setup of a Linux device (using Alpine Linux) to connect to a Wi-Fi network and share the internet connection through an Ethernet interface. It handles network configuration, IP forwarding and NAT setup.
+
+**NEW**: Now available in both Shell script and Python implementations!
 
 ## **Disclaimer**
 
 - This script is designed for my personal use and may require adjustments for specific system configurations. Use at your own risk.
-- The goal of the scripts is to automate sharing the internet from a notebook running Alpine Linux, completely loaded into RAM (no disk), to a computer via wired connection.
+- The goal is to automate sharing the internet from a notebook running Alpine Linux, completely loaded into RAM (no disk), to a computer via wired connection.
 - Here's my use case: the router is in the living room and my PC is in the bedroom. The router is modern enough to provide the full speed of my internet plan even over Wi-Fi, with almost zero latency and fluctuation. I didn't want to run a cable from the living room to the bedroom because it would be too much work. So I thought, "Why not load a minimal system (Alpine Linux) onto a laptop that I no longer use via PXE and share the Wi-Fi connection with the PC?" And that's exactly what I did. Don't judge me, my old notebook consumes less energy than my router.
 
 ## **Features**
@@ -21,17 +23,22 @@ This script automates the setup of a Linux device (using Alpine Linux) to connec
   - Checks internet connectivity at regular intervals
   - Restores network connectivity when issues are detected
   - Periodically verifies and reinstates iptables rules if they're missing
-- **NEW**: Safe to run multiple times without breaking existing configurations
-- **NEW**: Automatically backs up network settings before making changes
-- **NEW**: Stores configuration in a file for consistent operation after updates
-- **NEW**: Auto-detects gateway IP address or allows custom specification
-- **NEW**: Uses Alpine Linux's native configuration methods (no more /etc/network errors)
-- **NEW**: Modular script structure for easier configuration and maintenance
-- **NEW**: Port forwarding support to make services on your PC accessible from the internet
+- Safe to run multiple times without breaking existing configurations
+- Automatically backs up network settings before making changes
+- Stores configuration in a file for consistent operation after updates
+- Auto-detects gateway IP address or allows custom specification
+- Uses Alpine Linux's native configuration methods
+- Modular structure for easier configuration and maintenance
+- Port forwarding support to make services on your PC accessible from the internet
+- **NEW**: Available as a Python implementation with improved error handling
+- **NEW**: Comprehensive test suite for the Python modules
+- **NEW**: Better handling of special characters in Wi-Fi passwords
+- **NEW**: Support for both iptables and nftables firewall systems
 
 ## **Prerequisites**
-- Alpine Linux.
-- Internet access.
+- Alpine Linux
+- Python 3 (for Python implementation)
+- Internet access
 ---
 
 ## **Setup**
@@ -53,48 +60,57 @@ git clone https://github.com/enrell/alpine-wifi-bridge.git
 cd alpine-wifi-bridge
 ```
 
-### **2. Make the Script Executable**
+### **2. Choose Your Implementation**
+
+#### **Shell Script Implementation**
+Make the scripts executable:
 ```bash
 chmod +x setup.sh script.sh scripts/*.sh
 ```
 
-## **Usage**
-
-### **1. Run the Script**
-Run the script as root or with `sudo` to ensure it has the required permissions:
+Run the setup:
 ```bash
 ./setup.sh
 ```
-Or use the backward-compatible script:
+
+#### **Python Implementation**
+Install Python and dependencies:
 ```bash
-./script.sh
+apk add python3 py3-pip
+pip install -r requirements.txt
 ```
 
-### **2. Provide Wi-Fi Credentials**
+Make the Python scripts executable:
+```bash
+chmod +x setup.py script.py network-restart.py
+```
+
+Run the setup:
+```bash
+./setup.py setup
+```
+
+### **3. Provide Wi-Fi Credentials**
 If the script doesn't find an existing Wi-Fi configuration, it will prompt you to enter:
 - **SSID**: The name of the Wi-Fi network.
 - **Password**: The Wi-Fi password.
 
-### **3. Gateway IP Configuration**
-The script will:
+### **4. Gateway IP Configuration**
+The program will:
 - Automatically detect your gateway IP address from the network configuration
 - If detection fails, it will ask if you want to specify a custom gateway IP
 - You can enter your router's IP address (typically something like 192.168.1.1 or 10.0.0.1)
 
-### **4. Internet Sharing**
-The script will:
-- Connect to the Wi-Fi network.
-- Set up a static IP on the Ethernet interface (`10.42.0.1` by default).
-- Enable NAT and IP forwarding.
-- Configure comprehensive iptables rules that allow unrestricted network traffic:
-  - All traffic between connected devices
-  - All traffic to and from the internet
-  - All traffic to and from the notebook
-  - ICMP traffic for ping and network diagnostics
+### **5. Internet Sharing**
+The program will:
+- Connect to the Wi-Fi network
+- Set up a static IP on the Ethernet interface (`10.42.0.1` by default)
+- Enable NAT and IP forwarding
+- Configure comprehensive iptables rules that allow unrestricted network traffic
 
 ## **Port Forwarding Feature**
 
-The script now includes the ability to forward all traffic from your Alpine machine to your PC. This is useful when you want to run services on your PC and make them accessible from the outside network.
+The project includes the ability to forward all traffic from your Alpine machine to your PC. This is useful when you want to run services on your PC and make them accessible from the outside network.
 
 ### **How to Enable Port Forwarding**
 
@@ -114,9 +130,13 @@ The script now includes the ability to forward all traffic from your Alpine mach
    PC_IP="10.42.0.100"  # Replace with your PC's actual IP address
    ```
 
-3. Run the setup script:
+3. Run the setup script (either implementation):
    ```bash
+   # Shell script
    ./setup.sh
+   
+   # Python
+   ./setup.py setup
    ```
 
 ### **How It Works**
@@ -125,35 +145,43 @@ The script now includes the ability to forward all traffic from your Alpine mach
 - This makes services running on your PC (e.g., web servers, game servers) accessible from the outside network
 - You'll access these services using the Alpine machine's IP address (the one on the Wi-Fi network)
 
-### **Example Use Case**
+## **Python Implementation**
 
-If your Alpine machine has IP 192.168.0.170 on the Wi-Fi network and your PC has IP 10.42.0.100 on the Ethernet network:
+The new Python implementation offers several advantages:
 
-1. You run a web server on your PC at 10.42.0.100:8000
-2. With port forwarding enabled, you can access this web server from any device on your Wi-Fi network by navigating to 192.168.0.170:8000
+### **Benefits**
+- Better error handling and more robust operation
+- Improved code organization with a modular package structure
+- Better handling of special characters in passwords and commands
+- Automatic detection of the firewall system (iptables or nftables)
+- Comprehensive test suite for quality assurance
+- Consistent configuration across implementation methods
 
-## **Modular Structure**
+### **Python Package Structure**
+- `pybridge/`: Main Python package
+  - `__init__.py`: Package initialization
+  - `utils.py`: Common utility functions
+  - `config.py`: Configuration management
+  - `backup.py`: Backup and restore operations
+  - `network.py`: Network interface detection and setup
+  - `firewall.py`: Firewall and NAT configuration
+  - `portforward.py`: Port forwarding functionality
 
-The script has been split into multiple files for easier configuration and maintenance:
+### **Running Tests**
 
-### **Configuration**
-- `config/settings.conf`: Main configuration file with all user-configurable settings
+The Python implementation includes comprehensive unit tests. To run the tests:
 
-### **Scripts**
-- `setup.sh`: Main script that ties everything together
-- `script.sh`: Backward-compatible wrapper for the old script
-- `scripts/utils.sh`: Utility functions used by all scripts
-- `scripts/backup.sh`: Backup and restore functionality
-- `scripts/network.sh`: Network configuration (Wi-Fi, Ethernet, routing)
-- `scripts/firewall.sh`: Firewall and NAT configuration
-- `scripts/portforward.sh`: Port forwarding functionality
+```bash
+# Install test dependencies
+pip install pytest
 
-### **Monitoring**
-- `network-restart.py`: Network monitoring script
+# Run the tests
+python run_tests.py
+```
 
 ## **Customizing Settings**
 
-To customize the script's behavior, edit the `config/settings.conf` file:
+To customize the behavior, edit the `config/settings.conf` file:
 
 ```bash
 # Edit the configuration file
@@ -169,38 +197,31 @@ Available settings:
 - Iptables rules storage
 - Port forwarding configuration
 
-## **Upgrading from Previous Versions**
+## **Network Monitoring**
 
-If you're upgrading from a previous version of this script:
+The network monitoring script automatically keeps your connection stable:
 
-1. **Backup Your Configuration**: Although the script now automatically backs up your network configuration, it's always good practice to manually back up important files:
-   ```bash
-   cp /etc/wpa_supplicant/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf.bak
-   ```
+```bash
+# Install Python if needed
+apk add python3
 
-2. **Update the Repository**:
-   ```bash
-   cd alpine-wifi-bridge
-   git pull
-   ```
+# Start the monitoring script
+python3 network-restart.py
+```
 
-3. **Run the Script**: The updated script is designed to be safe to run multiple times and will:
-   - Detect existing configurations
-   - Only apply changes where needed
-   - Store your network interface names for consistent operation
-   - Auto-detect your gateway IP address
-   ```bash
-   ./setup.sh
-   ```
+## **Restoring Original Settings**
 
-4. **If Something Goes Wrong**: You can restore your original settings:
-   ```bash
-   ./setup.sh --restore
-   ```
+If you need to revert to your original network settings:
 
-5. **Check the Changelog**: For a detailed list of changes in each version, see [Changelog](CHANGELOG.md)
+```bash
+# Shell script
+./setup.sh --restore
 
-# **Troubleshooting**
+# Python
+./setup.py restore
+```
+
+## **Troubleshooting**
 
 1. **Wi-Fi Not Connecting**
    - Ensure the Wi-Fi SSID and password are correct.
@@ -221,89 +242,37 @@ If you're upgrading from a previous version of this script:
      ```bash
      iptables -t nat -L
      iptables -L FORWARD
-     iptables -L INPUT
-     iptables -L OUTPUT
      ```
    - Verify that IP forwarding is enabled:
      ```bash
      sysctl net.ipv4.ip_forward
      ```
-   - Make sure that all required rules are present. You can restart the network monitor to automatically check and fix missing rules:
+   - Restart the network monitor to automatically check and fix missing rules:
      ```bash
      python network-restart.py
      ```
 
 4. **Gateway IP Issues**
-   - If you're having connectivity problems, check your gateway IP:
+   - Check your gateway IP:
      ```bash
      ip route | grep default
      ```
-   - If the gateway IP is incorrect, you can edit the configuration file:
-     ```bash
-     nano /etc/alpine-wifi-bridge/config
-     ```
-   - Change the `GATEWAY_IP` value to your router's IP address, then run:
-     ```bash
-     ./setup.sh
-     ```
+   - If incorrect, edit the configuration file and re-run setup.
 
 5. **Port Forwarding Not Working**
-   - Check that port forwarding is enabled in the configuration
-   - Verify that your PC's IP is correct in the configuration
-   - Check the iptables rules:
+   - Verify forwarding is enabled in the configuration
+   - Check that your PC's IP is correct
+   - Ensure your PC's firewall allows incoming connections
+
+6. **Python Implementation Issues**
+   - Check for Python dependency issues:
      ```bash
-     iptables -t nat -L PREROUTING -v -n
-     iptables -L FORWARD -v -n
+     pip install -r requirements.txt
      ```
-   - Make sure your PC's firewall allows incoming connections
-   - Verify the service is running on your PC and listening on the correct interfaces
-
-6. **Configuration Issues After Update**
-   - If you experience issues after updating the script, you can restore your original settings:
+   - Run the tests to verify the code is working properly:
      ```bash
-     ./setup.sh --restore
+     python run_tests.py
      ```
-   - Check the configuration file for any issues:
-     ```bash
-     cat /etc/alpine-wifi-bridge/config
-     ```
-
-7. **Errors About Missing Files or Directories**
-   - The script now uses Alpine Linux's native configuration methods
-   - If you see errors about missing files or directories, make sure you're using the latest version of the script
-   - The script creates all necessary directories automatically
-
-8. **Incompatible Configurations**
-   - For a detailed list of configurations that may not work with this script and their solutions, see [Incompatible Configurations](docs/INCOMPATIBLE_CONFIGURATIONS.md)
-   - For information about fixed incompatible configurations, see [Fixed Configurations](docs/FIXED_CONFIGURATIONS.md)
-
-# Network monitor
-The network_restart.py script is designed to automatically monitor your network connection and quickly restart the network interface if the connection drops. It aims to minimize interruptions, with a particular focus on activities where low downtime is critical.
-
-The script works by:
-   - Monitoring the network to ensure that it remains connected.
-   - Automatically reconnecting to the network if the connection is lost.
-   - Reinforcing connectivity by running necessary commands when the network fails.
-   - Periodically checking that all required iptables rules are in place and fixing any missing rules.
-   - Ensuring IP forwarding is enabled after any network restarts.
-   - **NEW**: Reading interface names from the configuration file for consistent operation.
-   - **NEW**: Using the correct gateway IP address from the configuration file.
-
-## Install python and run:
-Install:
-````
-apk update && apk add python3~3.12
-````
-Run:
-````
-python network-restart.py
-````
-
-# Revert the settings to their original state
-By running the script with the --restore flag, you can revert the settings to their original state.
-````
-./setup.sh --restore
-````
 
 ---
 
