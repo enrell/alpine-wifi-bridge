@@ -1,8 +1,6 @@
 """
 Port forwarding configuration for Alpine Wi-Fi Bridge
 """
-import re
-import subprocess
 from .utils import log, warn_continue, run_command
 
 
@@ -29,62 +27,36 @@ def setup_port_forwarding(config):
     # Get the IP address of the WLAN interface
     result = run_command(f"ip -4 addr show {wlan_iface} | grep -oP 'inet \\K[\\d.]+'", silent=True)
     if result.returncode != 0 or not result.stdout:
-        warn_continue("Could not determine IP address of WLAN interface. Skipping port forwarding.")
+        warn_continue("Could not get WLAN IP address. Skipping port forwarding.")
         return
     
     wlan_ip = result.stdout.strip()
-    log(f"Setting up traffic redirection from {wlan_ip} to {pc_ip}")
+    log(f"Setting up port forwarding from {wlan_ip} to {pc_ip}")
     
-    # DNAT rule to redirect all traffic coming to the Alpine machine to the PC
-    result = run_command(f"iptables -t nat -C PREROUTING -d {wlan_ip} -j DNAT --to-destination {pc_ip} 2>/dev/null", silent=True)
-    if result.returncode != 0:
-        result = run_command(f"iptables -t nat -A PREROUTING -d {wlan_ip} -j DNAT --to-destination {pc_ip}")
-        if result.returncode != 0:
-            warn_continue("Failed to set up DNAT rule for port forwarding.")
+    # Enable IP forwarding
+    run_command("echo 1 > /proc/sys/net/ipv4/ip_forward")
     
-    # Allow forwarding of packets to the PC
-    result = run_command(f"iptables -C FORWARD -d {pc_ip} -j ACCEPT 2>/dev/null", silent=True)
-    if result.returncode != 0:
-        result = run_command(f"iptables -A FORWARD -d {pc_ip} -j ACCEPT")
-        if result.returncode != 0:
-            warn_continue("Failed to allow forwarding to PC.")
+    # Add PREROUTING rule to forward all incoming traffic to PC
+    run_command(f"iptables -t nat -A PREROUTING -i {wlan_iface} -j DNAT --to-destination {pc_ip}")
     
-    # Add masquerading rule if it doesn't exist already
-    result = run_command(f"iptables -t nat -C POSTROUTING -o {wlan_iface} -j MASQUERADE 2>/dev/null", silent=True)
-    if result.returncode != 0:
-        result = run_command(f"iptables -t nat -A POSTROUTING -o {wlan_iface} -j MASQUERADE")
-        if result.returncode != 0:
-            warn_continue("Failed to set up masquerading for responses.")
+    # Add POSTROUTING rule for masquerading
+    eth_iface = config.get('ETH_IFACE', '')
+    if eth_iface:
+        run_command(f"iptables -t nat -A POSTROUTING -o {eth_iface} -j MASQUERADE")
     
-    log(f"Port forwarding setup complete. Traffic to {wlan_ip} will be redirected to {pc_ip}")
-    
-    # Store the WLAN_IP in config for later use when removing rules
-    config['WLAN_IP'] = wlan_ip
+    log("Port forwarding setup complete")
 
 
 def remove_port_forwarding(config):
     """Remove port forwarding rules."""
-    # Get the IP addresses
-    wlan_ip = config.get('WLAN_IP', '')
-    pc_ip = config.get('PC_IP', '')
     wlan_iface = config.get('WLAN_IFACE', '')
+    pc_ip = config.get('PC_IP', '')
+    eth_iface = config.get('ETH_IFACE', '')
     
-    # If WLAN_IP is not in config, try to detect it
-    if not wlan_ip and wlan_iface:
-        result = run_command(f"ip -4 addr show {wlan_iface} | grep -oP 'inet \\K[\\d.]+'", silent=True)
-        if result.returncode == 0 and result.stdout:
-            wlan_ip = result.stdout.strip()
+    if wlan_iface and pc_ip:
+        run_command(f"iptables -t nat -D PREROUTING -i {wlan_iface} -j DNAT --to-destination {pc_ip}")
     
-    if not wlan_ip or not pc_ip:
-        warn_continue("Could not determine IP addresses for removing port forwarding rules.")
-        return
+    if eth_iface:
+        run_command(f"iptables -t nat -D POSTROUTING -o {eth_iface} -j MASQUERADE")
     
-    log(f"Removing port forwarding from {wlan_ip} to {pc_ip}")
-    
-    # Remove DNAT rule
-    run_command(f"iptables -t nat -D PREROUTING -d {wlan_ip} -j DNAT --to-destination {pc_ip} 2>/dev/null")
-    
-    # Remove forward rule
-    run_command(f"iptables -D FORWARD -d {pc_ip} -j ACCEPT 2>/dev/null")
-    
-    log("Port forwarding rules removed.")
+    log("Port forwarding rules removed")

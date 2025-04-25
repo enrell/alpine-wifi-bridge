@@ -2,7 +2,6 @@
 Backup and restore functionality for Alpine Wi-Fi Bridge
 """
 import os
-import subprocess
 from .utils import log, warn_continue, run_command
 
 

@@ -2,7 +2,6 @@
 Configuration handling for Alpine Wi-Fi Bridge
 """
 import os
-import shutil
 from datetime import datetime
 from configparser import ConfigParser
 from .utils import log, warn_continue, error_exit

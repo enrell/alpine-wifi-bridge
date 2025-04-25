@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import click
-from pybridge.utils import ensure_root, log, warn_continue
+from pybridge.utils import ensure_root, log
 from pybridge.config import load_config, save_runtime_config
 from pybridge.backup import backup_network_config, restore_settings
 from pybridge.network import install_packages, detect_interfaces, setup_wifi, detect_gateway_ip, setup_ethernet, setup_routing

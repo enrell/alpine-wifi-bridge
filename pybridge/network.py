@@ -2,10 +2,7 @@
 Network configuration for Alpine Wi-Fi Bridge
 """
 import os
-import time
-import re
 import tempfile
-import subprocess
 from .utils import log, warn_continue, error_exit, run_command, command_exists
 
 
