@@ -1,64 +1,109 @@
-# Alpine Wi-Fi Bridge
+---
 
-A Python application that turns your Alpine Linux device into a Wi-Fi to Ethernet bridge. It automatically configures your network interfaces, sets up NAT, and enables internet sharing.
+# Alpine Live Boot Network Configuration Script
 
-## **Disclaimer**
+This script automates the process of setting up network connectivity on an Alpine Linux live boot environment. It configures Wi-Fi, enables internet sharing (NAT) from the Wi-Fi interface to an Ethernet interface, and sets up port forwarding for all traffic to a specific target PC on the wired network.
 
-- This script is designed for my personal use and may require adjustments for specific system configurations. Use at your own risk.
-- The goal is to automate sharing the internet from a notebook running Alpine Linux, completely loaded into RAM (no disk), to a computer via wired connection.
-- Here's my use case: the router is in the living room and my PC is in the bedroom. I didn't want to run a cable from the living room to the bedroom because it would be too much work. So I thought, "Why not load a minimal system (Alpine Linux) onto a laptop that I no longer use via PXE and share the Wi-Fi connection with the PC?" And that's exactly what I did.
+---
+
+## Features
+
+* **Automated Wi-Fi Connection:** Prompts for SSID and password to connect to your wireless network.
+* **Internet Sharing (NAT):** Configures your Alpine notebook to share its Wi-Fi internet connection with a wired device.
+* **All-Port Port Forwarding:** Redirects all incoming traffic from your Wi-Fi network to a specified target PC on the wired network.
+* **Temporary Configuration:** Ideal for Alpine live boot where network settings are not persistent.
+* **Error Handling:** Includes basic checks to notify you if a step fails.
+
+---
 
 ## Prerequisites
 
-- Alpine Linux
-- Python 3.6+
-- Basic networking packages (installed automatically)
+* A notebook running **Alpine Linux in live boot mode**.
+* Two network interfaces: one for Wi-Fi (e.g., `wlan0`) and one for Ethernet (e.g., `eth0`).
+* A physical Ethernet cable connecting your Alpine notebook to the target PC.
+* The target PC should be configured to accept an IP address in the `10.42.0.0/24` range (either statically or via DHCP if you manually configure a DHCP server on the Alpine notebook, though this script doesn't include a DHCP server).
+* **Basic understanding of network interfaces and IP addresses.**
 
-## Quick Start
+---
 
-```bash
-# Clone the repository
-apk update && apk add git
-git clone https://github.com/enrell/alpine-wifi-bridge.git
-cd alpine-wifi-bridge
+## Setup and Usage
 
-# Install dependencies
+1.  **Update and Install Git:**
+    First, ensure your package list is updated and install Git.
 
-echo "http://dl-cdn.alpinelinux.org/alpine/latest-stable/community" >> /etc/apk/repositories
-apk add python3 py3-pip
-python -m venv venv
-source ./venv/bin/activate
-pip install -r requirements.txt
+    ```bash
+    apk update && apk add git
+    ```
 
-# Run the setup
-python setup.py setup
+2.  **Set System Date and Time (Important for Git and SSL):**
+    If your system date/time is incorrect, Git clones might fail due to SSL certificate issues. Replace `YYYY-MM-DD HH-MM-SS` with the current date and time.
 
-## Configuration
+    ```bash
+    date -s "YYYY-MM-DD HH-MM-SS"
+    # Example: date -s "2025-05-23 08-22-00"
+    ```
 
-Edit `config/settings.conf` to customize the behavior:
+3.  **Clone the Repository:**
+    Clone this repository to get the script.
 
-```bash
-# Port forwarding configuration
-PC_IP="10.42.0.100"  # Your PC's IP address on the Ethernet network
-```
+    ```bash
+    git clone https://github.com/enrell/alpine-wifi-bridge
+    ```
 
-The application auto-detects network interfaces and gateway IP, but you can also configure them manually in the settings file.
+4.  **Navigate to the Script Directory:**
 
-## Restore Original Settings
+    ```bash
+    cd alpine-wifi-bridge
+    ```
 
-If you need to revert to your original network settings:
+5.  **Make it Executable:**
+    Give the script execution permissions.
 
-```bash
-python setup.py restore
-```
+    ```bash
+    chmod +x setup_network.sh
+    ```
 
-## Troubleshooting
+6.  **Customize Configuration Variables (Optional but Recommended):**
+    Open the `setup_network.sh` file and adjust the following variables at the top to match your environment:
 
-- **Wi-Fi Not Connecting**: Check SSID/password and wpa_supplicant (`ps aux | grep wpa_supplicant`)
-- **No Ethernet Interface**: Verify with `ip link show` 
-- **No Internet Sharing**: Check iptables rules and IP forwarding
-- **Port Forwarding Issues**: Verify PC IP address and firewall settings
+    ```bash
+    WIFI_IFACE="wlan0"      # Your Wi-Fi interface name
+    ETHERNET_IFACE="eth0"   # Your Ethernet interface name
+    NOTEBOOK_IP_ETH="10.42.0.1" # The IP your notebook will use on the wired network
+    TARGET_PC_IP="10.42.0.100"  # The IP of the PC connected via Ethernet
+    ```
 
-## License
+7.  **Run the Script:**
+    Execute the script with `sudo`.
 
-This project is licensed under the [MIT License](LICENSE).
+    ```bash
+    sudo ./setup_network.sh
+    ```
+
+    The script will then prompt you to enter your Wi-Fi SSID and password.
+
+---
+
+## Script Breakdown
+
+The script performs the following actions in sequence:
+
+1.  **Installs Necessary Tools:** `iptables`, `wpa_supplicant`, and `iw`.
+2.  **Activates Wi-Fi Interface:** Brings up your specified Wi-Fi interface.
+3.  **Configures Wi-Fi Connection:** Prompts for Wi-Fi SSID and password, then uses `wpa_passphrase` and `wpa_supplicant` to connect to your wireless network.
+4.  **Obtains Wi-Fi IP:** Uses `udhcpc` to get an IP address for your Wi-Fi interface from your main router.
+5.  **Configures Ethernet Interface:** Assigns a static IP (`10.42.0.1`) to your Ethernet interface and brings it up.
+6.  **Enables IP Forwarding:** Allows your notebook to route traffic between its network interfaces.
+7.  **Sets up NAT Rules:** Configures `iptables` to perform Network Address Translation (NAT), enabling devices on your wired network (`10.42.0.0/24`) to access the internet via your Wi-Fi connection.
+8.  **Configures All-Port Forwarding (DNAT):** Redirects all incoming traffic from your Wi-Fi interface to the specified `TARGET_PC_IP` on the wired network.
+
+---
+
+## Important Considerations
+
+* **Temporary Configuration:** All changes made by this script are temporary and will be lost upon rebooting your Alpine live system.
+* **Security Warning (All-Port Forwarding):** The script sets up port forwarding for *all* protocols and ports to your target PC. This is generally **not recommended for production environments** as it exposes all services on your target PC to your main Wi-Fi network. **Ensure your target PC has its own robust firewall** configured to allow only necessary connections.
+* **Target PC IP:** Ensure the `TARGET_PC_IP` variable in the script matches the actual static IP you've set on your wired target PC (e.g., `10.42.0.100`).
+* **Error Handling:** While basic error handling is included, real-world network issues can be complex. If the script fails, carefully read the error messages.
+
+---
